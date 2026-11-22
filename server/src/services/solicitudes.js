@@ -10,6 +10,40 @@ export class SolicitudError extends Error {
 
 export function createSolicitudService(storage) {
   return {
+    // SCRUM-131 / US-019: listado de solicitudes propias.
+    async listOwn(user) {
+      if (user.rol !== 'USUARIO') {
+        throw new SolicitudError(
+          403,
+          'Solo los usuarios pueden consultar sus solicitudes de recuperación.',
+        );
+      }
+
+      const solicitudes = await storage.listOwn(user.id);
+      return { solicitudes };
+    },
+
+    // SCRUM-131 / US-019: detalle de una solicitud propia.
+    async getOwn(user, solicitudId) {
+      if (user.rol !== 'USUARIO') {
+        throw new SolicitudError(
+          403,
+          'Solo los usuarios pueden consultar sus solicitudes de recuperación.',
+        );
+      }
+
+      if (!validator.isUUID(solicitudId)) {
+        throw new SolicitudError(404, 'Solicitud no encontrada.');
+      }
+
+      const solicitud = await storage.getOwn(user.id, solicitudId);
+
+      if (!solicitud) {
+        throw new SolicitudError(404, 'Solicitud no encontrada.');
+      }
+
+      return { solicitud };
+    },
     async create(user, hallazgoId, body) {
       if (user.rol !== 'USUARIO') {
         throw new SolicitudError(403, 'Solo los usuarios pueden solicitar la recuperación de un hallazgo.');

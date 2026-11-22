@@ -298,6 +298,14 @@ export function createApp({
     requireJson, express.json({ limit: '32kb', strict: true }), avisos.update);
   
   const solicitudes = createSolicitudService(solicitudStorage);
+  // SCRUM-131 / US-019: listado de solicitudes propias.
+  app.get('/api/solicitudes/mias', authenticated, async (req, res) => {
+    res.json(await solicitudes.listOwn(req.user));
+  });
+  // SCRUM-131 / US-019: detalle de una solicitud propia.
+  app.get('/api/solicitudes/:id', authenticated, async (req, res) => {
+    res.json(await solicitudes.getOwn(req.user, req.params.id));
+  });
   app.post('/api/hallazgos/:id/solicitudes', authenticated, requireSameOrigin,
     requireJson, express.json({ limit: '16kb', strict: true }), async (req, res) => {
       res.status(201).json(await solicitudes.create(req.user, req.params.id, req.body));
