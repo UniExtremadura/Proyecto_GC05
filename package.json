@@ -15,7 +15,7 @@
     "db:migrate": "node --env-file=.env server/scripts/migrate.js",
     "db:seed-dev": "node --env-file=.env server/scripts/seed-dev.js",
     "test": "vitest run",
-    "test:db": "node --env-file=.env --test server/tests/postgres.test.js server/tests/recovery-tokens.postgres.test.js server/tests/recovery.postgres.test.js server/tests/hallazgos.postgres.test.js server/tests/hallazgos-storage.postgres.test.js server/tests/hallazgos-busqueda.postgres.test.js server/tests/mis-hallazgos.postgres.test.js server/tests/avisos.postgres.test.js",
+    "test:db": "node --env-file=.env --test server/tests/postgres.test.js server/tests/recovery-tokens.postgres.test.js server/tests/recovery.postgres.test.js server/tests/hallazgos.postgres.test.js server/tests/hallazgos-storage.postgres.test.js server/tests/hallazgos-busqueda.postgres.test.js server/tests/mis-hallazgos.postgres.test.js server/tests/avisos.postgres.test.js server/tests/catalogos.postgres.test.js",
     "test:monolith": "npm run build && node --env-file=.env --test server/tests/monolith.test.js"
   },
   "dependencies": {
