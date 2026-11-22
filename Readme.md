@@ -106,6 +106,33 @@ Publicar avisos de pérdida (US-013: SCRUM-109, API; SCRUM-52, formulario de Lui
   - `client/src/api/avisos.test.jsx`
   - `client/src/FeedAvisosPage.test.jsx`
 
+### Buscar y filtrar avisos de pérdida (US-015: SCRUM-119)
+
+- Amplía `GET /api/avisos` (US-014) con filtros opcionales, combinables entre sí y con la paginación:
+  - `q`: texto de hasta 100 caracteres. Se separa en palabras (como mucho 10) y cada una debe aparecer en algún campo público del aviso: descripción, categoría, facultad o centro. No distingue mayúsculas; `%`, `_` y `\` se buscan como texto literal.
+  - `categoriaId`, `facultadId` y `centroId`: UUID. Filtrar por facultad incluye los avisos de sus centros.
+  - Un parámetro vacío equivale a no filtrar.
+- Siempre devuelve solo avisos `Activos`. Nunca busca ni ordena por datos privados (`aviso_datos_privados`: rasgos y contacto) ni por el autor.
+- Sin coincidencias: 200 con `avisos: []` y el mensaje «No hay avisos activos que coincidan con la búsqueda.». Sin filtros, se mantiene el mensaje de US-014.
+- 400 con `errors[campo]` si un filtro no es un UUID, el texto supera 100 caracteres, un parámetro se repite o se envía uno desconocido. El mensaje es «Revisa los filtros de búsqueda.»; si solo falla la paginación, sigue siendo «Revisa los parámetros de paginación.».
+- Cliente: `getAvisos(pagina, tamano, { q, categoriaId, facultadId, centroId })` en `client/src/api/avisos.js`; los filtros vacíos no se envían.
+- Pantalla `#feed-avisos`: formulario «Buscar avisos» con texto, categoría, facultad y centro (solo los de la facultad elegida). Al buscar vuelve a la primera página; «Limpiar filtros» recupera el feed completo. Si no cargan los catálogos, se puede seguir buscando por texto. Los resultados no ofrecen ninguna acción de recuperación (US-015-AC-06).
+- Pruebas: las mismas cuatro de US-014, con los casos de búsqueda marcados como SCRUM-119 / US-015.
+
+### Editar un aviso propio (US-016: SCRUM-122, API; SCRUM-60, pantalla de Luis)
+
+Todas las rutas exigen sesión y solo actúan sobre los avisos del usuario de la sesión. Un aviso de otra persona responde igual que uno inexistente (404), sin revelar que existe.
+
+- `GET /api/avisos/mios`: avisos propios en cualquier estado, del más reciente al más antiguo (hasta 200). Cada uno: `{ id, descripcion, fechaPerdida, estado, categoria, facultad, centro, publicadoEn, actualizadoEn }`, con los nombres de los catálogos.
+- `GET /api/avisos/:id`: `{ aviso: { id, categoriaId, facultadId, centroId, descripcion, fechaPerdida, estado, rasgosPrivados, contactoEmail, contactoTelefono, publicadoEn, actualizadoEn, editable } }`. Incluye los datos privados porque solo lo ve su autor. `editable` es `true` mientras el aviso esté `Activo`.
+- `PUT /api/avisos/:id`, con origen permitido y `Content-Type: application/json`: recibe el aviso completo, con los mismos 8 campos y las mismas reglas que `POST /api/avisos`. Nunca se aceptan `id`, `autorId` ni `estado`.
+  - 200: `{ message: "Aviso actualizado correctamente.", aviso: { id, estado: "Activo" } }`.
+  - 400 con `errors[campo]` si algún dato no es válido o un catálogo no existe o está inactivo; 404 si no existe o es ajeno; 409 «Solo se pueden editar avisos activos.» si ya no está `Activo`.
+  - Se guarda en una transacción que bloquea el aviso. Conserva el autor, el estado y la fecha de publicación, y actualiza `updated_at`. Si se vacían todos los datos privados, se borra su fila en `aviso_datos_privados`. No toca hallazgos ni solicitudes.
+- **Conexión para Luis:** en `client/src/api/avisos.js`, `getMyAvisos()`, `getMyAviso(id)` y `updateAviso(id, datos)`. El `aviso` de `getMyAviso` se puede pasar tal cual a `<EditLostNoticeForm aviso={...} />`, y su `onSubmit` puede ser `datos => updateAviso(id, datos)`. Si `editable` es `false`, no mostrar el formulario.
+- Sin migraciones nuevas.
+- Pruebas: `server/tests/avisos.test.js`, `server/tests/avisos.postgres.test.js` y `client/src/api/avisos.test.jsx`, en los bloques SCRUM-122 / US-016.
+
 Recuperación de contraseña (SCRUM-43, API; SCRUM-94, pantallas React):
 
 - Arrancar el buzón local con `docker compose up -d mail` y abrir `http://localhost:8025`. Solo captura correos de pruebas; no los entrega por Internet.

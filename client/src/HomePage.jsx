@@ -153,6 +153,14 @@ export function HomePage({
                     Consultar avisos de pérdida
                   </a>
                 </p>
+                <p>
+                  <a href="#cerrar-avisos">Cerrar mis avisos</a>
+                </p>
+                <p>
+                  <a href="#mis-avisos">
+                    Mis avisos de pérdida
+                  </a>
+                </p>
               </>
             ) : (
               <p className="help">{status}</p>

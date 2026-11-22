@@ -285,6 +285,14 @@ export function createApp({
 
   // SCRUM-57 / US-014: feed paginado de avisos de pérdida activos.
   app.get('/api/avisos', authenticated, avisos.listActive);
+  app.get('/api/avisos/gestion-cierre', authenticated, avisos.listForClosure);
+  app.post('/api/avisos/:id/cierre', authenticated, requireSameOrigin,
+    requireJson, express.json({ limit: '4kb', strict: true }), avisos.close);
+  // SCRUM-122 / US-016: avisos propios. /mios va antes de /:id para que no se tome como id.
+  app.get('/api/avisos/mios', authenticated, avisos.listOwn);
+  app.get('/api/avisos/:id', authenticated, avisos.getOwn);
+  app.put('/api/avisos/:id', authenticated, requireSameOrigin,
+    requireJson, express.json({ limit: '32kb', strict: true }), avisos.update);
   
   app.use('/api', (_req, res) => {
     res.status(404).json({

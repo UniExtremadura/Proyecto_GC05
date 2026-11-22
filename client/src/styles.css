@@ -74,6 +74,9 @@ footer { padding: 2rem 0; color: #455f58; }
 .estado-activo { color: #085d50; background: #e8f2ef; }
 .estado-devuelto { color: #1f4f8a; background: #e7eef8; }
 .estado-retirado { color: #5b5b5b; background: #efefef; }
+/* SCRUM-60 / US-016: mis avisos de pérdida (sin foto). */
+.my-notice { grid-template-columns: minmax(0, 1fr) auto; }
+.estado-cerrado { color: #5b5b5b; background: #efefef; }
 .finding-data { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .35rem 1rem; margin: 1rem 0; }
 .finding-data dt { font-weight: 650; }
 .finding-data dd { margin: 0; overflow-wrap: anywhere; }
