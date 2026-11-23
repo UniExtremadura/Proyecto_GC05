@@ -77,6 +77,10 @@ footer { padding: 2rem 0; color: #455f58; }
 /* SCRUM-60 / US-016: mis avisos de pérdida (sin foto). */
 .my-notice { grid-template-columns: minmax(0, 1fr) auto; }
 .estado-cerrado { color: #5b5b5b; background: #efefef; }
+/* SCRUM-130 / US-019: estados de las solicitudes de recuperación. */
+.estado-pendiente { color: #7a4b00; background: #fff4dc; }
+.estado-validada { color: #085d50; background: #e8f2ef; }
+.estado-rechazada { color: #9b1c1c; background: #fdecec; }
 .finding-data { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .35rem 1rem; margin: 1rem 0; }
 .finding-data dt { font-weight: 650; }
 .finding-data dd { margin: 0; overflow-wrap: anywhere; }

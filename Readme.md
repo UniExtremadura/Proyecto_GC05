@@ -162,3 +162,14 @@ Formulario de solicitud (US-018 / SCRUM-127):
 - Valida antes de enviar y no envía dos veces. Con 201 muestra «Solicitud enviada. Estado: Pendiente.»; con 400 muestra el error junto al campo; con 409 muestra el motivo que da el servidor (hallazgo ya no activo o solicitud pendiente duplicada); con 401 ofrece iniciar sesión.
 - Módulo HTTP: `createSolicitud(hallazgoId, justificacion)` en `client/src/api/solicitudes.js`. Solo envía la justificación; nunca el solicitante ni el estado.
 - Pruebas: `client/src/api/solicitudes.test.jsx`, `client/src/RecoveryRequestForm.test.jsx` y los casos SCRUM-127 de `client/src/SearchFindingsPage.test.jsx`.
+
+### Consultar el estado de mis solicitudes (US-019 / SCRUM-130)
+
+Requiere la migración `012-decisiones-solicitudes.sql` de SCRUM-131 (`npm.cmd run db:migrate`).
+
+- Pantalla `#mis-solicitudes`, enlazada desde el inicio («Mis solicitudes de recuperación») y desde la confirmación del formulario de US-018 («Ver mis solicitudes»).
+- Lista las solicitudes propias (`GET /api/solicitudes/mias`) con el hallazgo, su categoría, facultad y fecha, la fecha de envío y el estado (Pendiente, Validada o Rechazada).
+- «Ver detalle» carga `GET /api/solicitudes/:id` y muestra también la justificación propia. Si está Validada muestra las instrucciones de recogida; si está Rechazada, el motivo del rechazo. Una solicitud Pendiente no muestra ninguna decisión.
+- Es de solo lectura: no hay controles para cambiar el estado ni la decisión. Sin solicitudes enlaza a la búsqueda de hallazgos; con 404 indica que la solicitud no existe o no es propia; con 401 ofrece iniciar sesión.
+- Módulo HTTP: `getMisSolicitudes()` y `getMiSolicitud(id)` en `client/src/api/solicitudes.js`.
+- Pruebas: `client/src/MyRequestsPage.test.jsx` y los casos SCRUM-130 de `client/src/api/solicitudes.test.jsx`.

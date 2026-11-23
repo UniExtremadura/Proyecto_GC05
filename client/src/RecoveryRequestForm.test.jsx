@@ -66,6 +66,7 @@ it('AC-05: envía la justificación y muestra la solicitud Pendiente', async () 
   expect(api.createSolicitud).toHaveBeenCalledWith('hall-1', 'Lleva un llavero con mis iniciales');
   expect(screen.queryByLabelText('Justificación de propiedad')).toBeNull();
   expect(screen.getByText(/El hallazgo sigue publicado/)).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Ver mis solicitudes' })).toHaveAttribute('href', '#mis-solicitudes');
 
   fireEvent.click(screen.getByRole('button', { name: 'Volver a los resultados' }));
   expect(onClose).toHaveBeenCalledTimes(1);
