@@ -8,6 +8,7 @@ import { createRecoveryService } from './services/recovery.js';
 import { createRecoveryMailer } from './services/recoveryMail.js';
 import { createHallazgoRepository } from './repositories/hallazgos.js';
 import { createAvisoRepository } from './repositories/avisos.js';
+import { createCatalogoRepository } from './repositories/catalogos.js';
 import { createSolicitudRepository } from './repositories/solicitudes.js';
 
 if (!process.env.DATABASE_URL) {
@@ -33,6 +34,7 @@ const app = createApp({
   // SCRUM-105: hallazgos, rasgos privados y fotos en PostgreSQL.
   hallazgoStorage: createHallazgoRepository(pool),
   avisoStorage: createAvisoRepository(pool),
+  catalogoStorage: createCatalogoRepository(pool),
   solicitudStorage: createSolicitudRepository(pool),
   recovery: createRecoveryService({
     tokens: createRecoveryTokens(createRecoveryTokenRepository(pool)),

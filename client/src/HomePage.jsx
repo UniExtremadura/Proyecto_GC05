@@ -169,6 +169,14 @@ export function HomePage({
         ))}
       </section>
 
+      {user?.rol === 'ADMINISTRADOR' && !demo && (
+        <section className="card catalogo-home" aria-labelledby="admin-home-title">
+          <h2 id="admin-home-title">Administración</h2>
+          <p>Gestiona las facultades, centros y categorías disponibles en la plataforma.</p>
+          <a className="button-link" href="#administrar-catalogos">Gestionar catálogos</a>
+        </section>
+      )}
+
       <footer>
         Lost&Found UEx · Proyecto académico GPS
       </footer>
