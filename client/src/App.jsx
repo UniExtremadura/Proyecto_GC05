@@ -136,6 +136,8 @@ export function App() {
   // SCRUM-130 / US-019: estado de mis solicitudes de recuperación.
   if (hash === '#mis-solicitudes' && !demo) {
     return <MyRequestsPage />;
+  }
+
   // SCRUM-132 / US-023: la API comprueba permisos también al abrir esta URL directamente.
   if (hash === '#administrar-catalogos' && !demo) {
     return <AdminCatalogosPage />;
