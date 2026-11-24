@@ -22,6 +22,7 @@ try {
     '008-historial-hallazgos.sql',
     '009-avisos.sql',
     '010-cierre-avisos.sql',
+    '011-solicitudes-recuperacion.sql',
   ];
 
   for (const filename of migrations) {

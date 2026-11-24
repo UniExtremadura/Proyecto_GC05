@@ -3,10 +3,16 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SearchFindingsPage } from './SearchFindingsPage.jsx';
 import * as api from './api/hallazgos.js';
+import * as solicitudesApi from './api/solicitudes.js';
 
 vi.mock('./api/hallazgos.js', () => ({
   getHallazgoOptions: vi.fn(),
   searchHallazgos: vi.fn(),
+}));
+
+vi.mock('./api/solicitudes.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  createSolicitud: vi.fn(),
 }));
 
 afterEach(() => {
@@ -438,4 +444,53 @@ it('no muestra información privada del autor ni los rasgos privados', async () 
   expect(
     screen.queryByText('Rasgo privado secreto'),
   ).toBeNull();
+});
+
+// SCRUM-127 / US-018: iniciar la solicitud de recuperación desde los resultados.
+
+it('AC-01: abre el formulario de solicitud del hallazgo elegido y lo cierra al cancelar', async () => {
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', {
+    name: 'Solicitar la recuperación de: Mochila azul ficticia',
+  }));
+
+  const formulario = screen.getByRole('region', { name: 'Solicitar la recuperación' });
+  expect(formulario.textContent).toContain('Mochila azul ficticia');
+  expect(screen.getByLabelText('Justificación de propiedad')).toBeTruthy();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+  expect(screen.queryByRole('region', { name: 'Solicitar la recuperación' })).toBeNull();
+  expect(screen.getByRole('heading', { name: 'Mochila azul ficticia' })).toBeTruthy();
+});
+
+it('AC-01: no ofrece la solicitud si el hallazgo no está Activo', async () => {
+  api.getHallazgoOptions.mockResolvedValue(options);
+  api.searchHallazgos.mockResolvedValue(pageResult({
+    hallazgos: [{ ...hallazgo, estado: 'Devuelto' }],
+  }));
+
+  render(<SearchFindingsPage />);
+
+  await screen.findByRole('heading', { name: 'Mochila azul ficticia' });
+  expect(screen.queryByRole('button', { name: /Solicitar la recuperación/ })).toBeNull();
+});
+
+it('AC-07: tras enviar la solicitud, el hallazgo sigue en los resultados', async () => {
+  solicitudesApi.createSolicitud.mockResolvedValue({
+    solicitud: { id: 's-1', hallazgoId: 'hall-1', estado: 'Pendiente', creadaEn: '2026-11-22T10:00:00.000Z' },
+  });
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', {
+    name: 'Solicitar la recuperación de: Mochila azul ficticia',
+  }));
+  fireEvent.change(screen.getByLabelText('Justificación de propiedad'), { target: { value: 'Es mía' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Enviar solicitud' }));
+
+  expect(await screen.findByText(/Solicitud enviada/)).toBeTruthy();
+  expect(solicitudesApi.createSolicitud).toHaveBeenCalledWith('hall-1', 'Es mía');
+  expect(screen.getByRole('heading', { name: 'Mochila azul ficticia' })).toBeTruthy();
+  expect(api.searchHallazgos).toHaveBeenCalledTimes(1);
 });

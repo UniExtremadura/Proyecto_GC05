@@ -32,6 +32,8 @@ import { hallazgoController, receiveHallazgo } from './controllers/hallazgos.js'
 import { createAvisoRepository } from './repositories/avisos.js';
 import { createAvisoService, AvisoError } from './services/avisos.js';
 import { avisoController } from './controllers/avisos.js';
+import { createSolicitudRepository } from './repositories/solicitudes.js';
+import { createSolicitudService, SolicitudError } from './services/solicitudes.js';
 
 import {
   catalogoController,
@@ -46,6 +48,7 @@ export function createApp({
   hallazgoStorage = createHallazgoRepository(),
   avisoStorage = createAvisoRepository(),
   catalogoStorage = createCatalogoRepository(),
+  solicitudStorage = createSolicitudRepository(),
   avisoLimit = 30,
   recoveryLimit = 30,
   registrationLimit = 20,
@@ -337,6 +340,12 @@ export function createApp({
     express.json({ limit: '16kb', strict: true }),
     catalogos.setActivo,
   );
+  
+  const solicitudes = createSolicitudService(solicitudStorage);
+  app.post('/api/hallazgos/:id/solicitudes', authenticated, requireSameOrigin,
+    requireJson, express.json({ limit: '16kb', strict: true }), async (req, res) => {
+      res.status(201).json(await solicitudes.create(req.user, req.params.id, req.body));
+    });
 
   app.use('/api', (_req, res) => {
     res.status(404).json({
@@ -366,6 +375,7 @@ export function createApp({
       error instanceof HallazgoError ||
       error instanceof AvisoError ||
       error instanceof CatalogoError
+      error instanceof SolicitudError
     ) {
       return res.status(error.status).json({
         message: error.message,

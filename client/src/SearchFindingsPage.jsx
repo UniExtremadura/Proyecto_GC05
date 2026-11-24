@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getHallazgoOptions, searchHallazgos } from './api/hallazgos.js';
+import { RecoveryRequestForm } from './RecoveryRequestForm.jsx';
 
 const EMPTY_FILTERS = {
   q: '',
@@ -46,6 +47,8 @@ function getErrorMessage(error) {
 
 export function SearchFindingsPage() {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
+  // SCRUM-127 / US-018: hallazgo del que se está pidiendo la recuperación.
+  const [solicitando, setSolicitando] = useState(null);
 
   const [options, setOptions] = useState({
     facultades: [],
@@ -306,6 +309,14 @@ export function SearchFindingsPage() {
         </form>
       </section>
 
+      {solicitando && (
+        <RecoveryRequestForm
+          key={solicitando.id}
+          hallazgo={solicitando}
+          onClose={() => setSolicitando(null)}
+        />
+      )}
+
       <section
         className="home-grid"
         aria-live="polite"
@@ -414,6 +425,17 @@ export function SearchFindingsPage() {
                     {hallazgo.ubicacion.longitud}
                   </p>
                 </div>
+              )}
+
+              {/* SCRUM-127 / US-018-AC-01: solo se ofrece para hallazgos Activos. */}
+              {hallazgo.estado === 'Activo' && (
+                <button
+                  type="button"
+                  onClick={() => setSolicitando(hallazgo)}
+                  aria-label={`Solicitar la recuperación de: ${hallazgo.descripcion}`}
+                >
+                  Solicitar recuperación
+                </button>
               )}
             </article>
           ))}
