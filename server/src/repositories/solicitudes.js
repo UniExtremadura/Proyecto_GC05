@@ -3,6 +3,75 @@ import { SolicitudError } from '../services/solicitudes.js';
 
 export function createSolicitudRepository(pool) {
   return {
+
+    // SCRUM-131 / US-019: consultar únicamente las solicitudes propias.
+    async listOwn(userId) {
+      if (!pool) {
+        throw new SolicitudError(503, 'La consulta de solicitudes no está disponible.');
+      }
+
+      const { rows } = await pool.query(
+        `SELECT s.id,
+                s.hallazgo_id AS "hallazgoId",
+                s.estado,
+                CASE WHEN s.estado = 'Rechazada'
+                  THEN s.motivo_rechazo ELSE NULL
+                END AS "motivoRechazo",
+                CASE WHEN s.estado = 'Validada'
+                  THEN s.instrucciones_recogida ELSE NULL
+                END AS "instruccionesRecogida",
+                to_json(s.created_at) #>> '{}' AS "creadaEn",
+
+                h.descripcion AS "hallazgoDescripcion",
+                to_char(h.fecha_hallazgo, 'YYYY-MM-DD') AS "fechaHallazgo",
+                f.nombre AS facultad,
+                c.nombre AS categoria
+           FROM solicitudes_recuperacion s
+           JOIN hallazgos h ON h.id = s.hallazgo_id
+           JOIN facultades f ON f.id = h.facultad_id
+           JOIN categorias c ON c.id = h.categoria_id
+          WHERE s.solicitante_id = $1
+          ORDER BY s.created_at DESC, s.id DESC
+          LIMIT 200`,
+        [userId],
+      );
+
+      return rows;
+    },
+
+    // SCRUM-131 / US-019: detalle de una solicitud propia.
+    async getOwn(userId, solicitudId) {
+      if (!pool) {
+        throw new SolicitudError(503, 'La consulta de solicitudes no está disponible.');
+      }
+
+      const { rows } = await pool.query(
+        `SELECT s.id,
+                s.hallazgo_id AS "hallazgoId",
+                s.justificacion,
+                s.estado,
+                CASE WHEN s.estado = 'Rechazada'
+                  THEN s.motivo_rechazo ELSE NULL
+                END AS "motivoRechazo",
+                CASE WHEN s.estado = 'Validada'
+                  THEN s.instrucciones_recogida ELSE NULL
+                END AS "instruccionesRecogida",
+                to_json(s.created_at) #>> '{}' AS "creadaEn",
+               h.descripcion AS "hallazgoDescripcion",
+                to_char(h.fecha_hallazgo, 'YYYY-MM-DD') AS "fechaHallazgo",
+                f.nombre AS facultad,
+                c.nombre AS categoria
+           FROM solicitudes_recuperacion s
+           JOIN hallazgos h ON h.id = s.hallazgo_id
+           JOIN facultades f ON f.id = h.facultad_id
+           JOIN categorias c ON c.id = h.categoria_id
+          WHERE s.id = $1
+            AND s.solicitante_id = $2`,
+        [solicitudId, userId],
+      );
+
+      return rows[0] ?? null;
+    },
     async create(userId, hallazgoId, justificacion) {
       if (!pool) throw new SolicitudError(503, 'La creación de solicitudes no está disponible.');
       const client = await pool.connect();

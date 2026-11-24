@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { createSolicitud } from './solicitudes.js';
+import { createSolicitud, getMiSolicitud, getMisSolicitudes } from './solicitudes.js';
 
 // SCRUM-127 / US-018: contrato del módulo HTTP con la API de SCRUM-64.
 const HALLAZGO = '44444444-4444-4444-8444-444444444444';
@@ -77,4 +77,45 @@ it('sin conexión no reintenta y lo explica', async () => {
     status: 0, message: 'No se pudo conectar con el servidor. Comprueba la conexión.',
   });
   expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+// SCRUM-130 / US-019: consulta de solicitudes propias (API de SCRUM-131).
+it('getMisSolicitudes consulta las propias con la sesión y sin cuerpo', async () => {
+  const solicitudes = [{ id: 's-1', estado: 'Pendiente' }];
+  const fetch = respond(200, { solicitudes });
+  vi.stubGlobal('fetch', fetch);
+
+  expect(await getMisSolicitudes()).toEqual({ solicitudes });
+  expect(fetch).toHaveBeenCalledWith('/api/solicitudes/mias', {
+    credentials: 'same-origin', headers: { Accept: 'application/json' },
+  });
+});
+
+it('getMiSolicitud codifica el identificador', async () => {
+  const fetch = respond(200, { solicitud: { id: 's-1' } });
+  vi.stubGlobal('fetch', fetch);
+
+  await getMiSolicitud('a/b?c');
+
+  expect(fetch.mock.calls[0][0]).toBe('/api/solicitudes/a%2Fb%3Fc');
+});
+
+it.each([
+  [401, 'Tu sesión ha caducado. Inicia sesión de nuevo.'],
+  [403, 'Tu cuenta no puede consultar solicitudes de recuperación.'],
+  [404, 'La solicitud no existe o no es tuya.'],
+  [503, 'La consulta de solicitudes no está disponible en este momento.'],
+  [500, 'No se han podido cargar las solicitudes.'],
+])('consulta %i: mensaje comprensible sin detalles internos', async (status, message) => {
+  vi.stubGlobal('fetch', respond(status, { message: 'SQL interno' }));
+
+  await expect(getMiSolicitud(HALLAZGO)).rejects.toMatchObject({ status, message });
+});
+
+it('consulta: respuesta sin datos o sin conexión', async () => {
+  vi.stubGlobal('fetch', respond(200, {}));
+  await expect(getMisSolicitudes()).rejects.toMatchObject({ message: 'La respuesta del servidor no es válida.' });
+
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+  await expect(getMisSolicitudes()).rejects.toMatchObject({ status: 0 });
 });

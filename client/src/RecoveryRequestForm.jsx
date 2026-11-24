@@ -89,6 +89,8 @@ export function RecoveryRequestForm({ hallazgo, onClose }) {
           </p>
           <div className="hero-actions">
             <button type="button" onClick={onClose}>Volver a los resultados</button>
+            {/* SCRUM-130 / US-019: seguimiento de la solicitud. */}
+            <a href="#mis-solicitudes">Ver mis solicitudes</a>
           </div>
         </div>
       ) : (

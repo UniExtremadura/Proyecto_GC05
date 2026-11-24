@@ -53,3 +53,36 @@ export async function createSolicitud(hallazgoId, justificacion) {
   if (!data?.solicitud) throw new SolicitudApiError(response.status, 'La respuesta del servidor no es válida.');
   return data;
 }
+
+/** SCRUM-130 / US-019 · Consulta de las solicitudes propias (API de SCRUM-131, Ángel).
+ * await getMisSolicitudes() -> { solicitudes: [{ id, hallazgoId, estado, creadaEn, hallazgoDescripcion,
+ *   fechaHallazgo, facultad, categoria, motivoRechazo, instruccionesRecogida }] }
+ * await getMiSolicitud(id) -> { solicitud: { ...lo anterior, justificacion } }
+ * Solo son de lectura: la pantalla no puede cambiar el estado ni la decisión (US-019-AC-06).
+ */
+const consultaMessages = {
+  401: 'Tu sesión ha caducado. Inicia sesión de nuevo.',
+  403: 'Tu cuenta no puede consultar solicitudes de recuperación.',
+  404: 'La solicitud no existe o no es tuya.',
+  503: 'La consulta de solicitudes no está disponible en este momento.',
+};
+
+async function getJson(path, key) {
+  let response;
+  try {
+    response = await fetch(path, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+  } catch {
+    throw new SolicitudApiError(0, 'No se pudo conectar con el servidor. Comprueba la conexión.');
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new SolicitudApiError(response.status, consultaMessages[response.status] || 'No se han podido cargar las solicitudes.');
+  }
+  if (!data?.[key]) throw new SolicitudApiError(response.status, 'La respuesta del servidor no es válida.');
+  return data;
+}
+
+export const getMisSolicitudes = () => getJson('/api/solicitudes/mias', 'solicitudes');
+
+export const getMiSolicitud = id => getJson(`/api/solicitudes/${encodeURIComponent(id)}`, 'solicitud');

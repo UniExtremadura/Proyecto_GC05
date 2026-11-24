@@ -140,6 +140,11 @@ export function HomePage({
                     Mis hallazgos
                   </a>
                 </p>
+                <p>
+                  <a href="#mis-solicitudes">
+                    Mis solicitudes de recuperación
+                  </a>
+                </p>
               </>
             ) : title === 'Avisos de pérdida' && user && !demo ? (
               <>

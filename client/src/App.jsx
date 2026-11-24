@@ -12,6 +12,7 @@ import { PublishLostNoticePage } from './PublishLostNoticePage.jsx';
 import { FeedAvisosPage } from './FeedAvisosPage.jsx';
 import { CloseNoticesPage } from './CloseNoticesPage.jsx';
 import { MyLostNoticesPage } from './MyLostNoticesPage.jsx';
+import { MyRequestsPage } from './MyRequestsPage.jsx';
 import { AdminCatalogosPage } from './AdminCatalogosPage.jsx';
 
 /** Navegación de registro, inicio de sesión, perfil y cierre de sesión. */
@@ -130,6 +131,11 @@ export function App() {
   // SCRUM-60 / US-016: mis avisos de pérdida y su edición.
   if (hash === '#mis-avisos' && !demo) {
     return <MyLostNoticesPage />;
+  }
+
+  // SCRUM-130 / US-019: estado de mis solicitudes de recuperación.
+  if (hash === '#mis-solicitudes' && !demo) {
+    return <MyRequestsPage />;
   }
 
   // SCRUM-132 / US-023: la API comprueba permisos también al abrir esta URL directamente.
