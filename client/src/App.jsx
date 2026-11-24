@@ -13,6 +13,7 @@ import { FeedAvisosPage } from './FeedAvisosPage.jsx';
 import { CloseNoticesPage } from './CloseNoticesPage.jsx';
 import { MyLostNoticesPage } from './MyLostNoticesPage.jsx';
 import { MyRequestsPage } from './MyRequestsPage.jsx';
+import { AdminCatalogosPage } from './AdminCatalogosPage.jsx';
 
 /** Navegación de registro, inicio de sesión, perfil y cierre de sesión. */
 export function App() {
@@ -135,6 +136,9 @@ export function App() {
   // SCRUM-130 / US-019: estado de mis solicitudes de recuperación.
   if (hash === '#mis-solicitudes' && !demo) {
     return <MyRequestsPage />;
+  // SCRUM-132 / US-023: la API comprueba permisos también al abrir esta URL directamente.
+  if (hash === '#administrar-catalogos' && !demo) {
+    return <AdminCatalogosPage />;
   }
 
   // Portada pública o pantalla del usuario autenticado.

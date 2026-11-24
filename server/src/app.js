@@ -3,6 +3,8 @@ import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 import { fileURLToPath } from 'node:url';
 import { logoutController } from './controllers/logout.js';
+import { createCatalogoRepository } from './repositories/catalogos.js';
+import { CatalogoError } from './services/catalogos.js';
 
 
 import {
@@ -33,6 +35,11 @@ import { avisoController } from './controllers/avisos.js';
 import { createSolicitudRepository } from './repositories/solicitudes.js';
 import { createSolicitudService, SolicitudError } from './services/solicitudes.js';
 
+import {
+  catalogoController,
+  requireAdministrador,
+} from './controllers/catalogos.js';
+
 /** App independiente del puerto y de la conexión a PostgreSQL. */
 export function createApp({
   users,
@@ -40,6 +47,7 @@ export function createApp({
   recovery,
   hallazgoStorage = createHallazgoRepository(),
   avisoStorage = createAvisoRepository(),
+  catalogoStorage = createCatalogoRepository(),
   solicitudStorage = createSolicitudRepository(),
   avisoLimit = 30,
   recoveryLimit = 30,
@@ -164,8 +172,10 @@ export function createApp({
 
 
   // Perfil del usuario autenticado: US-005.
-  const profile = profileController(createProfileService(users));
   const authenticated = requireAuth(users);
+  const profile = profileController(createProfileService(users));
+  const catalogos = catalogoController(catalogoStorage);
+  const adminCatalogos = [authenticated, requireAdministrador];
 
   app.get('/api/profile/me', authenticated, profile.get);
 
@@ -296,6 +306,40 @@ export function createApp({
   app.get('/api/avisos/:id', authenticated, avisos.getOwn);
   app.put('/api/avisos/:id', authenticated, requireSameOrigin,
     requireJson, express.json({ limit: '32kb', strict: true }), avisos.update);
+
+  // SCRUM-134 / US-023: administración de facultades, centros y categorías.
+  app.get(
+    '/api/admin/catalogos',
+    ...adminCatalogos,
+    catalogos.list,
+  );
+
+  app.post(
+    '/api/admin/catalogos/:tipo',
+    ...adminCatalogos,
+    requireSameOrigin,
+    requireJson,
+    express.json({ limit: '16kb', strict: true }),
+    catalogos.create,
+  );
+
+  app.put(
+    '/api/admin/catalogos/:tipo/:id',
+    ...adminCatalogos,
+    requireSameOrigin,
+    requireJson,
+    express.json({ limit: '16kb', strict: true }),
+    catalogos.update,
+  );
+
+  app.patch(
+    '/api/admin/catalogos/:tipo/:id/estado',
+    ...adminCatalogos,
+    requireSameOrigin,
+    requireJson,
+    express.json({ limit: '16kb', strict: true }),
+    catalogos.setActivo,
+  );
   
   const solicitudes = createSolicitudService(solicitudStorage);
   // SCRUM-131 / US-019: listado de solicitudes propias.
@@ -338,6 +382,7 @@ export function createApp({
       error instanceof RecoveryError ||
       error instanceof HallazgoError ||
       error instanceof AvisoError ||
+      error instanceof CatalogoError ||
       error instanceof SolicitudError
     ) {
       return res.status(error.status).json({

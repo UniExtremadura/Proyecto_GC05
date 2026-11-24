@@ -1,5 +1,15 @@
 # Lost&Found UEx
 
+Administrar facultades, centros y categorías (US-023: SCRUM-134, API de Ángel; SCRUM-132, interfaz de Marcos):
+
+- Con una sesión de rol `ADMINISTRADOR`, pulsar «Gestionar catálogos» en la portada o abrir `/#administrar-catalogos`. La API comprueba la sesión y los permisos también al entrar directamente; Usuarios, Conserjes y la demostración no tienen acceso a los controles.
+- La pantalla conserva los colores y tarjetas del proyecto. Permite alternar entre Facultades, Centros y Categorías, consultar activos e inactivos, filtrar por estado, crear, editar y confirmar desactivaciones o reactivaciones. Los centros muestran su facultad y solo permiten seleccionar facultades activas al guardar.
+- Los nombres admiten hasta 150 caracteres para facultades y centros y 100 para categorías, conforme a la API. Un duplicado, una facultad inválida o el bloqueo por conserjes se muestran sin borrar los datos escritos ni anunciar éxito. Desactivar no borra publicaciones ni referencias históricas.
+- `client/src/api/catalogos.js` conecta con el contrato real de SCRUM-134: `GET /api/admin/catalogos`, `POST /api/admin/catalogos/:tipo`, `PUT /api/admin/catalogos/:tipo/:id` y `PATCH /api/admin/catalogos/:tipo/:id/estado`. `tipo` es `facultades`, `centros` o `categorias`. Alta/edición envía `{ nombre }` y, para centros, también `{ facultadId }`; el cambio de estado envía `{ activo: boolean }`. Se utiliza la cookie existente, sin enviar rol ni credenciales.
+- 400/409 muestran los errores de negocio de la API; 401 pide iniciar sesión y 403 retira los controles. Se bloquean dobles envíos y cambios de sección mientras se guarda. Los fallos de red no provocan reintentos automáticos: usar «Cancelar» y «Actualizar listado» antes de repetir una operación de resultado incierto.
+- Preparar el entorno con las migraciones existentes (`npm.cmd run db:migrate`) y arrancar con `npm.cmd run dev`. Esta interfaz no crea cuentas administrativas, no cambia roles y no añade migraciones ni modifica el backend de Ángel.
+- Pruebas nuevas: `client/src/AdminCatalogosPage.test.jsx` (pantallas, navegación, permisos y flujos) y `client/src/api/catalogos.test.jsx` (contrato HTTP). Se incluyen automáticamente en `npm.cmd test`. Se mantienen las pruebas de API y PostgreSQL de SCRUM-134.
+
 Monolito JavaScript: backend Express, frontend React y PostgreSQL. Implementación actual: registro local US-001 (SCRUM-83), según el diseño SCRUM-85.
 
 La [guía del registro](docs/development/US-001-registro.md) explica instalación, configuración, estructura, contrato API y pruebas para SCRUM-84. Inicio de sesión: [US-002](docs/development/US-002-inicio-sesion.md). Perfil: [US-005](docs/development/US-005-perfil.md).
