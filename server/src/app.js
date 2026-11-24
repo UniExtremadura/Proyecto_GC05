@@ -374,7 +374,7 @@ export function createApp({
       error instanceof RecoveryError ||
       error instanceof HallazgoError ||
       error instanceof AvisoError ||
-      error instanceof CatalogoError
+      error instanceof CatalogoError ||
       error instanceof SolicitudError
     ) {
       return res.status(error.status).json({
