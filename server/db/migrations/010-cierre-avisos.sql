@@ -1,0 +1,4 @@
+ALTER TABLE avisos
+    ADD COLUMN IF NOT EXISTS cerrado_en TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS cerrado_por UUID REFERENCES usuarios (id),
+    ADD COLUMN IF NOT EXISTS motivo_cierre VARCHAR(500);

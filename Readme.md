@@ -1,5 +1,15 @@
 # Lost&Found UEx
 
+Administrar facultades, centros y categorías (US-023: SCRUM-134, API de Ángel; SCRUM-132, interfaz de Marcos):
+
+- Con una sesión de rol `ADMINISTRADOR`, pulsar «Gestionar catálogos» en la portada o abrir `/#administrar-catalogos`. La API comprueba la sesión y los permisos también al entrar directamente; Usuarios, Conserjes y la demostración no tienen acceso a los controles.
+- La pantalla conserva los colores y tarjetas del proyecto. Permite alternar entre Facultades, Centros y Categorías, consultar activos e inactivos, filtrar por estado, crear, editar y confirmar desactivaciones o reactivaciones. Los centros muestran su facultad y solo permiten seleccionar facultades activas al guardar.
+- Los nombres admiten hasta 150 caracteres para facultades y centros y 100 para categorías, conforme a la API. Un duplicado, una facultad inválida o el bloqueo por conserjes se muestran sin borrar los datos escritos ni anunciar éxito. Desactivar no borra publicaciones ni referencias históricas.
+- `client/src/api/catalogos.js` conecta con el contrato real de SCRUM-134: `GET /api/admin/catalogos`, `POST /api/admin/catalogos/:tipo`, `PUT /api/admin/catalogos/:tipo/:id` y `PATCH /api/admin/catalogos/:tipo/:id/estado`. `tipo` es `facultades`, `centros` o `categorias`. Alta/edición envía `{ nombre }` y, para centros, también `{ facultadId }`; el cambio de estado envía `{ activo: boolean }`. Se utiliza la cookie existente, sin enviar rol ni credenciales.
+- 400/409 muestran los errores de negocio de la API; 401 pide iniciar sesión y 403 retira los controles. Se bloquean dobles envíos y cambios de sección mientras se guarda. Los fallos de red no provocan reintentos automáticos: usar «Cancelar» y «Actualizar listado» antes de repetir una operación de resultado incierto.
+- Preparar el entorno con las migraciones existentes (`npm.cmd run db:migrate`) y arrancar con `npm.cmd run dev`. Esta interfaz no crea cuentas administrativas, no cambia roles y no añade migraciones ni modifica el backend de Ángel.
+- Pruebas nuevas: `client/src/AdminCatalogosPage.test.jsx` (pantallas, navegación, permisos y flujos) y `client/src/api/catalogos.test.jsx` (contrato HTTP). Se incluyen automáticamente en `npm.cmd test`. Se mantienen las pruebas de API y PostgreSQL de SCRUM-134.
+
 Monolito JavaScript: backend Express, frontend React y PostgreSQL. Implementación actual: registro local US-001 (SCRUM-83), según el diseño SCRUM-85.
 
 La [guía del registro](docs/development/US-001-registro.md) explica instalación, configuración, estructura, contrato API y pruebas para SCRUM-84. Inicio de sesión: [US-002](docs/development/US-002-inicio-sesion.md). Perfil: [US-005](docs/development/US-005-perfil.md).
@@ -106,6 +116,33 @@ Publicar avisos de pérdida (US-013: SCRUM-109, API; SCRUM-52, formulario de Lui
   - `client/src/api/avisos.test.jsx`
   - `client/src/FeedAvisosPage.test.jsx`
 
+### Buscar y filtrar avisos de pérdida (US-015: SCRUM-119)
+
+- Amplía `GET /api/avisos` (US-014) con filtros opcionales, combinables entre sí y con la paginación:
+  - `q`: texto de hasta 100 caracteres. Se separa en palabras (como mucho 10) y cada una debe aparecer en algún campo público del aviso: descripción, categoría, facultad o centro. No distingue mayúsculas; `%`, `_` y `\` se buscan como texto literal.
+  - `categoriaId`, `facultadId` y `centroId`: UUID. Filtrar por facultad incluye los avisos de sus centros.
+  - Un parámetro vacío equivale a no filtrar.
+- Siempre devuelve solo avisos `Activos`. Nunca busca ni ordena por datos privados (`aviso_datos_privados`: rasgos y contacto) ni por el autor.
+- Sin coincidencias: 200 con `avisos: []` y el mensaje «No hay avisos activos que coincidan con la búsqueda.». Sin filtros, se mantiene el mensaje de US-014.
+- 400 con `errors[campo]` si un filtro no es un UUID, el texto supera 100 caracteres, un parámetro se repite o se envía uno desconocido. El mensaje es «Revisa los filtros de búsqueda.»; si solo falla la paginación, sigue siendo «Revisa los parámetros de paginación.».
+- Cliente: `getAvisos(pagina, tamano, { q, categoriaId, facultadId, centroId })` en `client/src/api/avisos.js`; los filtros vacíos no se envían.
+- Pantalla `#feed-avisos`: formulario «Buscar avisos» con texto, categoría, facultad y centro (solo los de la facultad elegida). Al buscar vuelve a la primera página; «Limpiar filtros» recupera el feed completo. Si no cargan los catálogos, se puede seguir buscando por texto. Los resultados no ofrecen ninguna acción de recuperación (US-015-AC-06).
+- Pruebas: las mismas cuatro de US-014, con los casos de búsqueda marcados como SCRUM-119 / US-015.
+
+### Editar un aviso propio (US-016: SCRUM-122, API; SCRUM-60, pantalla de Luis)
+
+Todas las rutas exigen sesión y solo actúan sobre los avisos del usuario de la sesión. Un aviso de otra persona responde igual que uno inexistente (404), sin revelar que existe.
+
+- `GET /api/avisos/mios`: avisos propios en cualquier estado, del más reciente al más antiguo (hasta 200). Cada uno: `{ id, descripcion, fechaPerdida, estado, categoria, facultad, centro, publicadoEn, actualizadoEn }`, con los nombres de los catálogos.
+- `GET /api/avisos/:id`: `{ aviso: { id, categoriaId, facultadId, centroId, descripcion, fechaPerdida, estado, rasgosPrivados, contactoEmail, contactoTelefono, publicadoEn, actualizadoEn, editable } }`. Incluye los datos privados porque solo lo ve su autor. `editable` es `true` mientras el aviso esté `Activo`.
+- `PUT /api/avisos/:id`, con origen permitido y `Content-Type: application/json`: recibe el aviso completo, con los mismos 8 campos y las mismas reglas que `POST /api/avisos`. Nunca se aceptan `id`, `autorId` ni `estado`.
+  - 200: `{ message: "Aviso actualizado correctamente.", aviso: { id, estado: "Activo" } }`.
+  - 400 con `errors[campo]` si algún dato no es válido o un catálogo no existe o está inactivo; 404 si no existe o es ajeno; 409 «Solo se pueden editar avisos activos.» si ya no está `Activo`.
+  - Se guarda en una transacción que bloquea el aviso. Conserva el autor, el estado y la fecha de publicación, y actualiza `updated_at`. Si se vacían todos los datos privados, se borra su fila en `aviso_datos_privados`. No toca hallazgos ni solicitudes.
+- **Conexión para Luis:** en `client/src/api/avisos.js`, `getMyAvisos()`, `getMyAviso(id)` y `updateAviso(id, datos)`. El `aviso` de `getMyAviso` se puede pasar tal cual a `<EditLostNoticeForm aviso={...} />`, y su `onSubmit` puede ser `datos => updateAviso(id, datos)`. Si `editable` es `false`, no mostrar el formulario.
+- Sin migraciones nuevas.
+- Pruebas: `server/tests/avisos.test.js`, `server/tests/avisos.postgres.test.js` y `client/src/api/avisos.test.jsx`, en los bloques SCRUM-122 / US-016.
+
 Recuperación de contraseña (SCRUM-43, API; SCRUM-94, pantallas React):
 
 - Arrancar el buzón local con `docker compose up -d mail` y abrir `http://localhost:8025`. Solo captura correos de pruebas; no los entrega por Internet.
@@ -115,3 +152,34 @@ Recuperación de contraseña (SCRUM-43, API; SCRUM-94, pantallas React):
 - Desde el inicio de sesión, pulsar «He olvidado mi contraseña», solicitar el enlace y abrirlo en Mailpit. El enlace `/#restablecer-contrasena?token=...` abre el formulario de nueva contraseña. Tras completar el cambio se elimina el token de la URL y se vuelve al inicio de sesión, sin autenticar automáticamente.
 - Al abrirlo se comprueba su vigencia con `POST /api/auth/validate-reset-token`, JSON `{ "token": "token-del-correo" }`. Si ha caducado, se ha sustituido o se ha usado, se muestra «Enlace expirado o no válido» sin mostrar el formulario. Esta consulta no consume el enlace; al guardar la contraseña se vuelve a validar dentro de la transacción.
 - La prueba `server/tests/recovery.postgres.test.js` verifica el servidor con PostgreSQL y un buzón SMTP efímero, sin necesitar Docker ni enviar mensajes reales. Las pruebas de `client/src/RecoveryForms.test.jsx` verifican las pantallas y el contrato HTTP.
+
+### Crear solicitudes de recuperación (US-018 / SCRUM-64)
+
+Aplica la migración `011-solicitudes-recuperacion.sql` con `npm.cmd run db:migrate`.
+El formulario de SCRUM-127 puede enviar `POST /api/hallazgos/:id/solicitudes` con
+la cookie de sesión y un JSON `{ "justificacion": "..." }`. Se requiere una
+cuenta de Usuario y una justificación de entre 1 y 2000 caracteres. La API
+responde con `201` y `{ solicitud: { id, hallazgoId, estado, creadaEn } }`.
+El estado inicial es `Pendiente`. Un hallazgo inexistente devuelve `404`.
+Un hallazgo inactivo o una solicitud pendiente duplicada devuelve `409`.
+La justificación queda almacenada de forma privada y no se incluye en la
+respuesta ni en el listado público de hallazgos.
+
+Formulario de solicitud (US-018 / SCRUM-127):
+
+- En `#buscar-hallazgos`, cada resultado `Activo` tiene el botón «Solicitar recuperación». Abre el formulario encima de los resultados, que siguen visibles.
+- El formulario identifica el hallazgo (descripción, categoría, facultad y fecha) y pide la «Justificación de propiedad»: obligatoria, de hasta 2000 caracteres, con contador. Explica que solo la verán el usuario y el Conserje de la facultad del hallazgo, y que enviar la solicitud no reserva el objeto ni lo retira del listado.
+- Valida antes de enviar y no envía dos veces. Con 201 muestra «Solicitud enviada. Estado: Pendiente.»; con 400 muestra el error junto al campo; con 409 muestra el motivo que da el servidor (hallazgo ya no activo o solicitud pendiente duplicada); con 401 ofrece iniciar sesión.
+- Módulo HTTP: `createSolicitud(hallazgoId, justificacion)` en `client/src/api/solicitudes.js`. Solo envía la justificación; nunca el solicitante ni el estado.
+- Pruebas: `client/src/api/solicitudes.test.jsx`, `client/src/RecoveryRequestForm.test.jsx` y los casos SCRUM-127 de `client/src/SearchFindingsPage.test.jsx`.
+
+### Consultar el estado de mis solicitudes (US-019 / SCRUM-130)
+
+Requiere la migración `012-decisiones-solicitudes.sql` de SCRUM-131 (`npm.cmd run db:migrate`).
+
+- Pantalla `#mis-solicitudes`, enlazada desde el inicio («Mis solicitudes de recuperación») y desde la confirmación del formulario de US-018 («Ver mis solicitudes»).
+- Lista las solicitudes propias (`GET /api/solicitudes/mias`) con el hallazgo, su categoría, facultad y fecha, la fecha de envío y el estado (Pendiente, Validada o Rechazada).
+- «Ver detalle» carga `GET /api/solicitudes/:id` y muestra también la justificación propia. Si está Validada muestra las instrucciones de recogida; si está Rechazada, el motivo del rechazo. Una solicitud Pendiente no muestra ninguna decisión.
+- Es de solo lectura: no hay controles para cambiar el estado ni la decisión. Sin solicitudes enlaza a la búsqueda de hallazgos; con 404 indica que la solicitud no existe o no es propia; con 401 ofrece iniciar sesión.
+- Módulo HTTP: `getMisSolicitudes()` y `getMiSolicitud(id)` en `client/src/api/solicitudes.js`.
+- Pruebas: `client/src/MyRequestsPage.test.jsx` y los casos SCRUM-130 de `client/src/api/solicitudes.test.jsx`.

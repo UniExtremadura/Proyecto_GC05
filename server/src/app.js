@@ -3,6 +3,8 @@ import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 import { fileURLToPath } from 'node:url';
 import { logoutController } from './controllers/logout.js';
+import { createCatalogoRepository } from './repositories/catalogos.js';
+import { CatalogoError } from './services/catalogos.js';
 
 
 import {
@@ -30,6 +32,13 @@ import { hallazgoController, receiveHallazgo } from './controllers/hallazgos.js'
 import { createAvisoRepository } from './repositories/avisos.js';
 import { createAvisoService, AvisoError } from './services/avisos.js';
 import { avisoController } from './controllers/avisos.js';
+import { createSolicitudRepository } from './repositories/solicitudes.js';
+import { createSolicitudService, SolicitudError } from './services/solicitudes.js';
+
+import {
+  catalogoController,
+  requireAdministrador,
+} from './controllers/catalogos.js';
 
 /** App independiente del puerto y de la conexión a PostgreSQL. */
 export function createApp({
@@ -38,6 +47,8 @@ export function createApp({
   recovery,
   hallazgoStorage = createHallazgoRepository(),
   avisoStorage = createAvisoRepository(),
+  catalogoStorage = createCatalogoRepository(),
+  solicitudStorage = createSolicitudRepository(),
   avisoLimit = 30,
   recoveryLimit = 30,
   registrationLimit = 20,
@@ -161,8 +172,10 @@ export function createApp({
 
 
   // Perfil del usuario autenticado: US-005.
-  const profile = profileController(createProfileService(users));
   const authenticated = requireAuth(users);
+  const profile = profileController(createProfileService(users));
+  const catalogos = catalogoController(catalogoStorage);
+  const adminCatalogos = [authenticated, requireAdministrador];
 
   app.get('/api/profile/me', authenticated, profile.get);
 
@@ -285,7 +298,63 @@ export function createApp({
 
   // SCRUM-57 / US-014: feed paginado de avisos de pérdida activos.
   app.get('/api/avisos', authenticated, avisos.listActive);
+  app.get('/api/avisos/gestion-cierre', authenticated, avisos.listForClosure);
+  app.post('/api/avisos/:id/cierre', authenticated, requireSameOrigin,
+    requireJson, express.json({ limit: '4kb', strict: true }), avisos.close);
+  // SCRUM-122 / US-016: avisos propios. /mios va antes de /:id para que no se tome como id.
+  app.get('/api/avisos/mios', authenticated, avisos.listOwn);
+  app.get('/api/avisos/:id', authenticated, avisos.getOwn);
+  app.put('/api/avisos/:id', authenticated, requireSameOrigin,
+    requireJson, express.json({ limit: '32kb', strict: true }), avisos.update);
+
+  // SCRUM-134 / US-023: administración de facultades, centros y categorías.
+  app.get(
+    '/api/admin/catalogos',
+    ...adminCatalogos,
+    catalogos.list,
+  );
+
+  app.post(
+    '/api/admin/catalogos/:tipo',
+    ...adminCatalogos,
+    requireSameOrigin,
+    requireJson,
+    express.json({ limit: '16kb', strict: true }),
+    catalogos.create,
+  );
+
+  app.put(
+    '/api/admin/catalogos/:tipo/:id',
+    ...adminCatalogos,
+    requireSameOrigin,
+    requireJson,
+    express.json({ limit: '16kb', strict: true }),
+    catalogos.update,
+  );
+
+  app.patch(
+    '/api/admin/catalogos/:tipo/:id/estado',
+    ...adminCatalogos,
+    requireSameOrigin,
+    requireJson,
+    express.json({ limit: '16kb', strict: true }),
+    catalogos.setActivo,
+  );
   
+  const solicitudes = createSolicitudService(solicitudStorage);
+  // SCRUM-131 / US-019: listado de solicitudes propias.
+  app.get('/api/solicitudes/mias', authenticated, async (req, res) => {
+    res.json(await solicitudes.listOwn(req.user));
+  });
+  // SCRUM-131 / US-019: detalle de una solicitud propia.
+  app.get('/api/solicitudes/:id', authenticated, async (req, res) => {
+    res.json(await solicitudes.getOwn(req.user, req.params.id));
+  });
+  app.post('/api/hallazgos/:id/solicitudes', authenticated, requireSameOrigin,
+    requireJson, express.json({ limit: '16kb', strict: true }), async (req, res) => {
+      res.status(201).json(await solicitudes.create(req.user, req.params.id, req.body));
+    });
+
   app.use('/api', (_req, res) => {
     res.status(404).json({
       message: 'Recurso no encontrado.',
@@ -312,7 +381,9 @@ export function createApp({
       error instanceof PasswordError ||
       error instanceof RecoveryError ||
       error instanceof HallazgoError ||
-      error instanceof AvisoError
+      error instanceof AvisoError ||
+      error instanceof CatalogoError ||
+      error instanceof SolicitudError
     ) {
       return res.status(error.status).json({
         message: error.message,

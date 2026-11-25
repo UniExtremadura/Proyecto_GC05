@@ -74,6 +74,13 @@ footer { padding: 2rem 0; color: #455f58; }
 .estado-activo { color: #085d50; background: #e8f2ef; }
 .estado-devuelto { color: #1f4f8a; background: #e7eef8; }
 .estado-retirado { color: #5b5b5b; background: #efefef; }
+/* SCRUM-60 / US-016: mis avisos de pérdida (sin foto). */
+.my-notice { grid-template-columns: minmax(0, 1fr) auto; }
+.estado-cerrado { color: #5b5b5b; background: #efefef; }
+/* SCRUM-130 / US-019: estados de las solicitudes de recuperación. */
+.estado-pendiente { color: #7a4b00; background: #fff4dc; }
+.estado-validada { color: #085d50; background: #e8f2ef; }
+.estado-rechazada { color: #9b1c1c; background: #fdecec; }
 .finding-data { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .35rem 1rem; margin: 1rem 0; }
 .finding-data dt { font-weight: 650; }
 .finding-data dd { margin: 0; overflow-wrap: anywhere; }
@@ -91,3 +98,28 @@ footer { padding: 2rem 0; color: #455f58; }
 .contact-fields { border: 1px solid #cbd8d5; border-radius: .5rem; margin: 1rem 0 .3rem; padding: .25rem 1rem 1rem; display: grid; min-width: 0; }
 .contact-fields legend { font-weight: 650; padding: 0 .3rem; }
 .aviso-legal { padding: 1rem; border: 1px solid #916315; border-radius: .5rem; background: #fff5d9; margin: 1rem 0 0; }
+
+/* SCRUM-132 / US-023. Colores y tarjetas compartidos; estilos limitados a administración. */
+.catalogo-home { margin-top: 1rem; }
+.catalogo-home h2 { margin-top: 0; }
+.admin-catalogos { max-width: 72rem; }
+.catalogo-sections { display: flex; flex-wrap: wrap; gap: .65rem; margin: 1.5rem 0; }
+.catalogo-sections button { margin: 0; }
+.catalogo-count { display: inline-block; min-width: 1.4rem; margin-left: .3rem; font-size: .85rem; }
+.catalogo-layout { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(17rem, 1fr); align-items: start; gap: 1.5rem; }
+.catalogo-layout h2 { font-size: 1.2rem; margin: 0 0 .75rem; }
+.catalogo-toolbar { margin-bottom: 1rem; }
+.catalogo-toolbar button { margin: 0; }
+.catalogo-list { list-style: none; padding: 0; display: grid; gap: .75rem; }
+.catalogo-list li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .75rem; border: 1px solid #cbd8d5; padding: 1rem; border-radius: .5rem; }
+.catalogo-item-info { flex: 1 1 10rem; min-width: 0; overflow-wrap: anywhere; }
+.catalogo-item-info h3 { font-size: 1rem; margin: 0 0 .4rem; }
+.catalogo-item-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.catalogo-item-actions button { margin: 0; padding: .5rem .65rem; }
+.catalogo-inactivo { color: #5b5b5b; background: #efefef; }
+.catalogo-editor { min-width: 0; border: 1px solid #cbd8d5; background: #f1f6f5; border-radius: .75rem; padding: 1.25rem; overflow-wrap: anywhere; }
+.catalogo-editor form { margin: 0; }
+.catalogo-editor fieldset { display: grid; border: 0; padding: 0; margin: 0; min-width: 0; }
+.catalogo-feedback, .catalogo-empty { padding: .85rem; border: 1px solid #cbd8d5; border-radius: .5rem; }
+.catalogo-feedback.success { background: #e8f2ef; }
+@media (max-width: 760px) { .catalogo-layout { grid-template-columns: 1fr; } }

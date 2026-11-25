@@ -140,6 +140,11 @@ export function HomePage({
                     Mis hallazgos
                   </a>
                 </p>
+                <p>
+                  <a href="#mis-solicitudes">
+                    Mis solicitudes de recuperación
+                  </a>
+                </p>
               </>
             ) : title === 'Avisos de pérdida' && user && !demo ? (
               <>
@@ -153,6 +158,14 @@ export function HomePage({
                     Consultar avisos de pérdida
                   </a>
                 </p>
+                <p>
+                  <a href="#cerrar-avisos">Cerrar mis avisos</a>
+                </p>
+                <p>
+                  <a href="#mis-avisos">
+                    Mis avisos de pérdida
+                  </a>
+                </p>
               </>
             ) : (
               <p className="help">{status}</p>
@@ -160,6 +173,14 @@ export function HomePage({
           </article>
         ))}
       </section>
+
+      {user?.rol === 'ADMINISTRADOR' && !demo && (
+        <section className="card catalogo-home" aria-labelledby="admin-home-title">
+          <h2 id="admin-home-title">Administración</h2>
+          <p>Gestiona las facultades, centros y categorías disponibles en la plataforma.</p>
+          <a className="button-link" href="#administrar-catalogos">Gestionar catálogos</a>
+        </section>
+      )}
 
       <footer>
         Lost&Found UEx · Proyecto académico GPS

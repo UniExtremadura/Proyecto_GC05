@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
-import { getAvisoOptions, publishAviso, getAvisos } from './avisos.js';
+import { getAvisoOptions, publishAviso, getAvisos, getMyAvisos, getMyAviso, updateAviso } from './avisos.js';
 
 afterEach(() => vi.unstubAllGlobals());
 it('Luis puede consultar los catálogos con la sesión existente', async () => {
@@ -78,6 +78,92 @@ it('envía correctamente los parámetros de paginación', async () => {
     '/api/avisos?pagina=2&tamano=5',
     { credentials: 'same-origin' }
   );
+});
+
+// SCRUM-122 / US-016: avisos propios y edición.
+const ID = '44444444-4444-4444-8444-444444444444';
+
+it('SCRUM-122: consulta los avisos propios y el detalle de uno', async () => {
+  const fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ avisos: [] }) });
+  vi.stubGlobal('fetch', fetch);
+
+  await getMyAvisos();
+  await getMyAviso(ID);
+
+  expect(fetch).toHaveBeenNthCalledWith(1, '/api/avisos/mios', { credentials: 'same-origin' });
+  expect(fetch).toHaveBeenNthCalledWith(2, `/api/avisos/${ID}`, { credentials: 'same-origin' });
+});
+
+it('SCRUM-122: guarda el aviso completo con PUT y JSON', async () => {
+  const fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ message: 'Aviso actualizado correctamente.', aviso: { id: ID, estado: 'Activo' } }),
+  });
+  vi.stubGlobal('fetch', fetch);
+  const datos = { categoriaId: 'cat', facultadId: 'fac', centroId: null, descripcion: 'Mochila',
+    fechaPerdida: '2026-01-15', rasgosPrivados: null, contactoEmail: null, contactoTelefono: null };
+
+  const result = await updateAviso(ID, datos);
+
+  expect(result.message).toBe('Aviso actualizado correctamente.');
+  expect(fetch).toHaveBeenCalledWith(`/api/avisos/${ID}`, {
+    credentials: 'same-origin', method: 'PUT',
+    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos),
+  });
+});
+
+it.each([
+  [400, 'Revisa los datos del aviso.', { descripcion: 'Introduce una descripción.' }],
+  [404, 'No se ha encontrado el aviso.', {}],
+  [409, 'Solo se pueden editar avisos activos.', {}],
+  [401, 'Debes iniciar sesión para gestionar tus avisos.', {}],
+])('SCRUM-122: al editar, un %i da un mensaje comprensible', async (status, message, errors) => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: false, status, json: async () => ({ message: 'interno', errors: { descripcion: 'Introduce una descripción.' } }),
+  }));
+
+  await expect(updateAviso(ID, {})).rejects.toMatchObject({ status, message, errors });
+});
+
+it('SCRUM-122: las opciones del formulario conservan sus mensajes', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({}) }));
+
+  await expect(getAvisoOptions()).rejects.toMatchObject({
+    status: 503, message: 'La publicación de avisos no está disponible en este momento.',
+  });
+});
+
+it('SCRUM-119: añade los filtros con contenido y omite los vacíos', async () => {
+  const fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ avisos: [] }),
+  });
+
+  vi.stubGlobal('fetch', fetch);
+
+  await getAvisos(1, 12, { q: ' mochila azul ', categoriaId: 'cat-1', facultadId: '', centroId: undefined });
+
+  expect(fetch).toHaveBeenCalledWith(
+    '/api/avisos?pagina=1&tamano=12&q=mochila+azul&categoriaId=cat-1',
+    { credentials: 'same-origin' }
+  );
+});
+
+it('SCRUM-119: con un 400 del feed usa el mensaje del servidor', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: false,
+    status: 400,
+    json: async () => ({
+      message: 'Revisa los filtros de búsqueda.',
+      errors: { categoriaId: 'Selecciona una categoría válida.' },
+    }),
+  }));
+
+  await expect(getAvisos(1, 12, { categoriaId: 'x' })).rejects.toMatchObject({
+    status: 400,
+    message: 'Revisa los filtros de búsqueda.',
+    errors: { categoriaId: 'Selecciona una categoría válida.' },
+  });
 });
 
 it('informa cuando la página solicitada no existe', async () => {
